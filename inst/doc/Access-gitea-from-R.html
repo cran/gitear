@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="ixpantia" />
+
+<meta name="date" content="2020-08-26" />
+
+<title>Access Gitea from R</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+<script>// Hide empty <a> tag within highlighted CodeBlock for screen reader accessibility (see https://github.com/jgm/pandoc/issues/6352#issuecomment-626106786) -->
+// v0.0.1
+// Written by JooYoung Seo (jooyoung@psu.edu) and Atsushi Yasumoto on June 1st, 2020.
+
+document.addEventListener('DOMContentLoaded', function() {
+  const codeList = document.getElementsByClassName("sourceCode");
+  for (var i = 0; i < codeList.length; i++) {
+    var linkList = codeList[i].getElementsByTagName('a');
+    for (var j = 0; j < linkList.length; j++) {
+      if (linkList[j].innerHTML === "") {
+        linkList[j].setAttribute('aria-hidden', 'true');
+      }
+    }
+  }
+});
+</script>
+
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Access Gitea from R</h1>
+<h4 class="author">ixpantia</h4>
+<h4 class="date">2020-08-26</h4>
+
+
+
+<p>Gitea is a community managed, lightweight code hosting solution were projects and their respective git repositories can be managed <a href="https://gitea.io" class="uri">https://gitea.io</a>. This package gives an interface to the ‘Gitea’ API to access and manage repositories, issues and organizations directly in R.</p>
+<div id="starting-with-gitear" class="section level2">
+<h2>Starting with <code>gitear</code></h2>
+<p>If you want to start using the functions from <code>gitear</code> you should first go to your gitea service and create an API KEY. You will find this under your avatar, configuration, application and then generate a new token.</p>
+<p>Be aware that you should save this token somewhere because its shown just once.</p>
+<p>This is going to be your API TOKEN. Then you can use a function like this:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a><span class="co"># Credentials</span></span>
+<span id="cb1-2"><a href="#cb1-2"></a></span>
+<span id="cb1-3"><a href="#cb1-3"></a>api_token &lt;-<span class="st"> &quot;gfdsgfd8ba18a866bsdfgsdfgs3a2dc9303453b0c92dcfb19&quot;</span></span>
+<span id="cb1-4"><a href="#cb1-4"></a>url_ixpantia &lt;-<span class="st"> &quot;https://prueba.com&quot;</span></span>
+<span id="cb1-5"><a href="#cb1-5"></a></span>
+<span id="cb1-6"><a href="#cb1-6"></a><span class="co"># Example function use:</span></span>
+<span id="cb1-7"><a href="#cb1-7"></a></span>
+<span id="cb1-8"><a href="#cb1-8"></a>issues &lt;-<span class="st"> </span><span class="kw">get_issues</span>(<span class="dt">base_url =</span> url_ixpantia,</span>
+<span id="cb1-9"><a href="#cb1-9"></a>                       <span class="dt">api_key =</span> api_token,</span>
+<span id="cb1-10"><a href="#cb1-10"></a>                       <span class="dt">owner =</span> <span class="st">&quot;empresa&quot;</span>,</span>
+<span id="cb1-11"><a href="#cb1-11"></a>                       <span class="dt">repo =</span> <span class="st">&quot;repo_prueba&quot;</span>)</span>
+<span id="cb1-12"><a href="#cb1-12"></a></span>
+<span id="cb1-13"><a href="#cb1-13"></a><span class="kw">glimpse</span>(issues)</span>
+<span id="cb1-14"><a href="#cb1-14"></a><span class="co">#&gt; Rows: 2</span></span>
+<span id="cb1-15"><a href="#cb1-15"></a><span class="co">#&gt; Columns: 10</span></span>
+<span id="cb1-16"><a href="#cb1-16"></a><span class="co">#&gt; $ number       &lt;int&gt; 3, 2</span></span>
+<span id="cb1-17"><a href="#cb1-17"></a><span class="co">#&gt; $ title        &lt;chr&gt; &quot;Primer tiquete para prueba&quot;, &quot;Primer tiquete para prueb…</span></span>
+<span id="cb1-18"><a href="#cb1-18"></a><span class="co">#&gt; $ body         &lt;chr&gt; &quot;Este es el cuerpo del tiquete&quot;, &quot;Este es el cuerpo del …</span></span>
+<span id="cb1-19"><a href="#cb1-19"></a><span class="co">#&gt; $ created_date &lt;chr&gt; &quot;2020-07-15&quot;, &quot;2020-07-15&quot;</span></span>
+<span id="cb1-20"><a href="#cb1-20"></a><span class="co">#&gt; $ created_time &lt;chr&gt; &quot;23:43:42&quot;, &quot;23:12:37&quot;</span></span>
+<span id="cb1-21"><a href="#cb1-21"></a><span class="co">#&gt; $ updated_date &lt;chr&gt; &quot;2020-07-24&quot;, &quot;2020-07-24&quot;</span></span>
+<span id="cb1-22"><a href="#cb1-22"></a><span class="co">#&gt; $ updated_time &lt;chr&gt; &quot;14:41:47&quot;, &quot;14:41:37&quot;</span></span>
+<span id="cb1-23"><a href="#cb1-23"></a><span class="co">#&gt; $ due_date     &lt;chr&gt; &quot;2020-07-31T23:59:59Z&quot;, &quot;2020-07-31T23:59:59Z&quot;</span></span>
+<span id="cb1-24"><a href="#cb1-24"></a><span class="co">#&gt; $ author       &lt;chr&gt; &quot;juan&quot;, &quot;juan&quot;</span></span>
+<span id="cb1-25"><a href="#cb1-25"></a><span class="co">#&gt; $ assignee     &lt;chr&gt; &quot;juan&quot;, &quot;juan&quot;</span></span></code></pre></div>
+<p>For the examples below, we are going to use credentials stored in a .Renviron file, which we are going to call from this variables:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a>example_key &lt;-<span class="st"> </span><span class="kw">Sys.getenv</span>(<span class="st">&quot;example_key&quot;</span>)</span>
+<span id="cb2-2"><a href="#cb2-2"></a>example_url &lt;-<span class="st"> </span><span class="kw">Sys.getenv</span>(<span class="st">&quot;example_url&quot;</span>)</span></code></pre></div>
+</div>
+<div id="get-information-about-your-organization" class="section level2">
+<h2>Get information about your organization</h2>
+<p>We can also obtain information from some organization defined in our gitea service:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1"></a><span class="co"># Example function use</span></span>
+<span id="cb3-2"><a href="#cb3-2"></a></span>
+<span id="cb3-3"><a href="#cb3-3"></a>organizations &lt;-<span class="st"> </span><span class="kw">get_an_organization</span>(<span class="dt">base_url =</span> example_url,</span>
+<span id="cb3-4"><a href="#cb3-4"></a>                                     <span class="dt">api_key =</span> example_key,</span>
+<span id="cb3-5"><a href="#cb3-5"></a>                                     <span class="dt">org =</span> <span class="st">&quot;empresa&quot;</span>) </span>
+<span id="cb3-6"><a href="#cb3-6"></a></span>
+<span id="cb3-7"><a href="#cb3-7"></a><span class="kw">glimpse</span>(organizations)</span>
+<span id="cb3-8"><a href="#cb3-8"></a><span class="co">#&gt; Rows: 1</span></span>
+<span id="cb3-9"><a href="#cb3-9"></a><span class="co">#&gt; Columns: 9</span></span>
+<span id="cb3-10"><a href="#cb3-10"></a><span class="co">#&gt; $ id                            &lt;int&gt; 8</span></span>
+<span id="cb3-11"><a href="#cb3-11"></a><span class="co">#&gt; $ username                      &lt;chr&gt; &quot;empresa&quot;</span></span>
+<span id="cb3-12"><a href="#cb3-12"></a><span class="co">#&gt; $ full_name                     &lt;chr&gt; &quot;&quot;</span></span>
+<span id="cb3-13"><a href="#cb3-13"></a><span class="co">#&gt; $ avatar_url                    &lt;chr&gt; &quot;https://prueba.com/user/avatar/empresa…</span></span>
+<span id="cb3-14"><a href="#cb3-14"></a><span class="co">#&gt; $ description                   &lt;chr&gt; &quot;&quot;</span></span>
+<span id="cb3-15"><a href="#cb3-15"></a><span class="co">#&gt; $ website                       &lt;chr&gt; &quot;&quot;</span></span>
+<span id="cb3-16"><a href="#cb3-16"></a><span class="co">#&gt; $ location                      &lt;chr&gt; &quot;&quot;</span></span>
+<span id="cb3-17"><a href="#cb3-17"></a><span class="co">#&gt; $ visibility                    &lt;chr&gt; &quot;public&quot;</span></span>
+<span id="cb3-18"><a href="#cb3-18"></a><span class="co">#&gt; $ repo_admin_change_team_access &lt;lgl&gt; FALSE</span></span></code></pre></div>
+</div>
+<div id="get-repositories-information-from-one-organization" class="section level2">
+<h2>Get repositories information from one organization</h2>
+<p>And we can also see which repositories are associated with that same organization:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a><span class="co"># Example function use</span></span>
+<span id="cb4-2"><a href="#cb4-2"></a></span>
+<span id="cb4-3"><a href="#cb4-3"></a>repos &lt;-<span class="st"> </span><span class="kw">get_list_repos_org</span>(<span class="dt">base_url =</span> example_url, </span>
+<span id="cb4-4"><a href="#cb4-4"></a>                            <span class="dt">api_key =</span> example_key, </span>
+<span id="cb4-5"><a href="#cb4-5"></a>                            <span class="dt">org =</span> <span class="st">&quot;empresa&quot;</span>)</span>
+<span id="cb4-6"><a href="#cb4-6"></a></span>
+<span id="cb4-7"><a href="#cb4-7"></a><span class="kw">glimpse</span>(repos)</span>
+<span id="cb4-8"><a href="#cb4-8"></a><span class="co">#&gt; Rows: 2</span></span>
+<span id="cb4-9"><a href="#cb4-9"></a><span class="co">#&gt; Columns: 37</span></span>
+<span id="cb4-10"><a href="#cb4-10"></a><span class="co">#&gt; $ id                          &lt;int&gt; 52, 57</span></span>
+<span id="cb4-11"><a href="#cb4-11"></a><span class="co">#&gt; $ owner                       &lt;df[,10]&gt; &lt;data.frame[2 x 10]&gt;</span></span>
+<span id="cb4-12"><a href="#cb4-12"></a><span class="co">#&gt; $ name                        &lt;chr&gt; &quot;repo_prueba&quot;, &quot;git-core-test-2&quot;</span></span>
+<span id="cb4-13"><a href="#cb4-13"></a><span class="co">#&gt; $ full_name                   &lt;chr&gt; &quot;empresa/repo_prueba&quot;, &quot;empresa/git-core-…</span></span>
+<span id="cb4-14"><a href="#cb4-14"></a><span class="co">#&gt; $ description                 &lt;chr&gt; &quot;Repositorio de prueba&quot;, &quot;&quot;</span></span>
+<span id="cb4-15"><a href="#cb4-15"></a><span class="co">#&gt; $ empty                       &lt;lgl&gt; FALSE, FALSE</span></span>
+<span id="cb4-16"><a href="#cb4-16"></a><span class="co">#&gt; $ private                     &lt;lgl&gt; FALSE, FALSE</span></span>
+<span id="cb4-17"><a href="#cb4-17"></a><span class="co">#&gt; $ fork                        &lt;lgl&gt; FALSE, FALSE</span></span>
+<span id="cb4-18"><a href="#cb4-18"></a><span class="co">#&gt; $ template                    &lt;lgl&gt; FALSE, FALSE</span></span>
+<span id="cb4-19"><a href="#cb4-19"></a><span class="co">#&gt; $ mirror                      &lt;lgl&gt; FALSE, FALSE</span></span>
+<span id="cb4-20"><a href="#cb4-20"></a><span class="co">#&gt; $ size                        &lt;int&gt; 0, 0</span></span>
+<span id="cb4-21"><a href="#cb4-21"></a><span class="co">#&gt; $ html_url                    &lt;chr&gt; &quot;https://prueba.com/empresa/repo_prueba&quot;,…</span></span>
+<span id="cb4-22"><a href="#cb4-22"></a><span class="co">#&gt; $ ssh_url                     &lt;chr&gt; &quot;git@prueba.com:empresa/repo_prueba.git&quot;,…</span></span>
+<span id="cb4-23"><a href="#cb4-23"></a><span class="co">#&gt; $ clone_url                   &lt;chr&gt; &quot;https://prueba.com/empresa/repo_prueba.g…</span></span>
+<span id="cb4-24"><a href="#cb4-24"></a><span class="co">#&gt; $ original_url                &lt;chr&gt; &quot;&quot;, &quot;&quot;</span></span>
+<span id="cb4-25"><a href="#cb4-25"></a><span class="co">#&gt; $ website                     &lt;chr&gt; &quot;&quot;, &quot;&quot;</span></span>
+<span id="cb4-26"><a href="#cb4-26"></a><span class="co">#&gt; $ stars_count                 &lt;int&gt; 0, 0</span></span>
+<span id="cb4-27"><a href="#cb4-27"></a><span class="co">#&gt; $ forks_count                 &lt;int&gt; 1, 0</span></span>
+<span id="cb4-28"><a href="#cb4-28"></a><span class="co">#&gt; $ watchers_count              &lt;int&gt; 4, 4</span></span>
+<span id="cb4-29"><a href="#cb4-29"></a><span class="co">#&gt; $ open_issues_count           &lt;int&gt; 8, 0</span></span>
+<span id="cb4-30"><a href="#cb4-30"></a><span class="co">#&gt; $ open_pr_counter             &lt;int&gt; 0, 0</span></span>
+<span id="cb4-31"><a href="#cb4-31"></a><span class="co">#&gt; $ release_counter             &lt;int&gt; 0, 0</span></span>
+<span id="cb4-32"><a href="#cb4-32"></a><span class="co">#&gt; $ default_branch              &lt;chr&gt; &quot;master&quot;, &quot;master&quot;</span></span>
+<span id="cb4-33"><a href="#cb4-33"></a><span class="co">#&gt; $ archived                    &lt;lgl&gt; FALSE, FALSE</span></span>
+<span id="cb4-34"><a href="#cb4-34"></a><span class="co">#&gt; $ created_at                  &lt;chr&gt; &quot;2020-07-15T23:11:39Z&quot;, &quot;2020-07-18T22:02…</span></span>
+<span id="cb4-35"><a href="#cb4-35"></a><span class="co">#&gt; $ updated_at                  &lt;chr&gt; &quot;2020-07-23T20:12:37Z&quot;, &quot;2020-07-18T22:02…</span></span>
+<span id="cb4-36"><a href="#cb4-36"></a><span class="co">#&gt; $ permissions                 &lt;df[,3]&gt; &lt;data.frame[2 x 3]&gt;</span></span>
+<span id="cb4-37"><a href="#cb4-37"></a><span class="co">#&gt; $ has_issues                  &lt;lgl&gt; TRUE, TRUE</span></span>
+<span id="cb4-38"><a href="#cb4-38"></a><span class="co">#&gt; $ internal_tracker            &lt;df[,3]&gt; &lt;data.frame[2 x 3]&gt;</span></span>
+<span id="cb4-39"><a href="#cb4-39"></a><span class="co">#&gt; $ has_wiki                    &lt;lgl&gt; TRUE, TRUE</span></span>
+<span id="cb4-40"><a href="#cb4-40"></a><span class="co">#&gt; $ has_pull_requests           &lt;lgl&gt; TRUE, TRUE</span></span>
+<span id="cb4-41"><a href="#cb4-41"></a><span class="co">#&gt; $ ignore_whitespace_conflicts &lt;lgl&gt; FALSE, FALSE</span></span>
+<span id="cb4-42"><a href="#cb4-42"></a><span class="co">#&gt; $ allow_merge_commits         &lt;lgl&gt; TRUE, TRUE</span></span>
+<span id="cb4-43"><a href="#cb4-43"></a><span class="co">#&gt; $ allow_rebase                &lt;lgl&gt; TRUE, TRUE</span></span>
+<span id="cb4-44"><a href="#cb4-44"></a><span class="co">#&gt; $ allow_rebase_explicit       &lt;lgl&gt; TRUE, TRUE</span></span>
+<span id="cb4-45"><a href="#cb4-45"></a><span class="co">#&gt; $ allow_squash_merge          &lt;lgl&gt; TRUE, TRUE</span></span>
+<span id="cb4-46"><a href="#cb4-46"></a><span class="co">#&gt; $ avatar_url                  &lt;chr&gt; &quot;&quot;, &quot;&quot;</span></span></code></pre></div>
+</div>
+<div id="user-information" class="section level2">
+<h2>User information</h2>
+<p>But we can not only get information about projects and repositories, we can also see specific information about users:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1"></a><span class="co"># Example function use</span></span>
+<span id="cb5-2"><a href="#cb5-2"></a></span>
+<span id="cb5-3"><a href="#cb5-3"></a>users &lt;-<span class="st"> </span><span class="kw">get_list_users</span>(<span class="dt">base_url =</span> example_url, </span>
+<span id="cb5-4"><a href="#cb5-4"></a>                        <span class="dt">api_key =</span> example_key)</span>
+<span id="cb5-5"><a href="#cb5-5"></a></span>
+<span id="cb5-6"><a href="#cb5-6"></a><span class="kw">glimpse</span>(users)</span>
+<span id="cb5-7"><a href="#cb5-7"></a><span class="co">#&gt; Rows: 4</span></span>
+<span id="cb5-8"><a href="#cb5-8"></a><span class="co">#&gt; Columns: 11</span></span>
+<span id="cb5-9"><a href="#cb5-9"></a><span class="co">#&gt; $ data.id         &lt;int&gt; 3, 25, 15, 9</span></span>
+<span id="cb5-10"><a href="#cb5-10"></a><span class="co">#&gt; $ data.login      &lt;chr&gt; &quot;pedro&quot;, &quot;juan&quot;, &quot;pedro&quot;, &quot;maria&quot;</span></span>
+<span id="cb5-11"><a href="#cb5-11"></a><span class="co">#&gt; $ data.full_name  &lt;chr&gt; &quot;&quot;, &quot;&quot;, &quot;&quot;, &quot;&quot;</span></span>
+<span id="cb5-12"><a href="#cb5-12"></a><span class="co">#&gt; $ data.email      &lt;chr&gt; &quot;pedro@correo.com&quot;, &quot;juan@correo.com&quot;, &quot;pedro@correo.…</span></span>
+<span id="cb5-13"><a href="#cb5-13"></a><span class="co">#&gt; $ data.avatar_url &lt;chr&gt; &quot;https://prueba.com/user/avatar/pedro/-1&quot;, &quot;https://p…</span></span>
+<span id="cb5-14"><a href="#cb5-14"></a><span class="co">#&gt; $ data.language   &lt;chr&gt; &quot;es-ES&quot;, &quot;es-ES&quot;, &quot;es-ES&quot;, &quot;es-ES&quot;</span></span>
+<span id="cb5-15"><a href="#cb5-15"></a><span class="co">#&gt; $ data.is_admin   &lt;lgl&gt; FALSE, TRUE, FALSE, TRUE</span></span>
+<span id="cb5-16"><a href="#cb5-16"></a><span class="co">#&gt; $ data.last_login &lt;chr&gt; &quot;2020-07-18T20:01:18Z&quot;, &quot;2020-07-23T20:12:11Z&quot;, &quot;2020…</span></span>
+<span id="cb5-17"><a href="#cb5-17"></a><span class="co">#&gt; $ data.created    &lt;chr&gt; &quot;2018-10-14T23:08:52Z&quot;, &quot;2020-03-09T23:46:56Z&quot;, &quot;2019…</span></span>
+<span id="cb5-18"><a href="#cb5-18"></a><span class="co">#&gt; $ data.username   &lt;chr&gt; &quot;pedro&quot;, &quot;juan&quot;, &quot;pedro&quot;, &quot;maria&quot;</span></span>
+<span id="cb5-19"><a href="#cb5-19"></a><span class="co">#&gt; $ ok              &lt;lgl&gt; TRUE, TRUE, TRUE, TRUE</span></span></code></pre></div>
+</div>
+<div id="all-commits-from-a-specific-repository" class="section level2">
+<h2>All commits from a specific repository</h2>
+<p>We can also see the commits made to a certain repository in a very simple way</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a><span class="co"># Example function use</span></span>
+<span id="cb6-2"><a href="#cb6-2"></a></span>
+<span id="cb6-3"><a href="#cb6-3"></a>commits &lt;-<span class="st"> </span><span class="kw">get_commits</span>(<span class="dt">base_url =</span> example_url, </span>
+<span id="cb6-4"><a href="#cb6-4"></a>                     <span class="dt">api_key =</span> example_key,</span>
+<span id="cb6-5"><a href="#cb6-5"></a>                     <span class="dt">owner =</span> <span class="st">&quot;empresa&quot;</span>,</span>
+<span id="cb6-6"><a href="#cb6-6"></a>                     <span class="dt">repo =</span> <span class="st">&quot;repo_prueba&quot;</span>)</span>
+<span id="cb6-7"><a href="#cb6-7"></a></span>
+<span id="cb6-8"><a href="#cb6-8"></a><span class="kw">head</span>(commits)</span>
+<span id="cb6-9"><a href="#cb6-9"></a><span class="co">#&gt;                                                                                                          url</span></span>
+<span id="cb6-10"><a href="#cb6-10"></a><span class="co">#&gt; 1 https://prueba.com/api/v1/repos/empresa/repo_prueba/git/commits/77226be181cd8f00ba34rsfsgs26445e2df128fcf1</span></span>
+<span id="cb6-11"><a href="#cb6-11"></a><span class="co">#&gt;                                          sha</span></span>
+<span id="cb6-12"><a href="#cb6-12"></a><span class="co">#&gt; 1 77226be181cd8f00ba34rsfsgs26445e2df128fcf1</span></span>
+<span id="cb6-13"><a href="#cb6-13"></a><span class="co">#&gt;                                                                                   html_url</span></span>
+<span id="cb6-14"><a href="#cb6-14"></a><span class="co">#&gt; 1 https://prueba.com/empresa/repo_prueba/commit/77226be181cd8f00ba34rsfsgs26445e2df128fcf1</span></span>
+<span id="cb6-15"><a href="#cb6-15"></a><span class="co">#&gt;                                                                                                   commit.url</span></span>
+<span id="cb6-16"><a href="#cb6-16"></a><span class="co">#&gt; 1 https://prueba.com/api/v1/repos/empresa/repo_prueba/git/commits/77226be181cd8f00ba34rsfsgs26445e2df128fcf1</span></span>
+<span id="cb6-17"><a href="#cb6-17"></a><span class="co">#&gt;   commit.author.name commit.author.email   commit.author.date</span></span>
+<span id="cb6-18"><a href="#cb6-18"></a><span class="co">#&gt; 1               juan     juan@correo.com 2020-07-15T23:11:40Z</span></span>
+<span id="cb6-19"><a href="#cb6-19"></a><span class="co">#&gt;   commit.committer.name commit.committer.email commit.committer.date</span></span>
+<span id="cb6-20"><a href="#cb6-20"></a><span class="co">#&gt; 1                  juan        juan@correo.com  2020-07-15T23:11:40Z</span></span>
+<span id="cb6-21"><a href="#cb6-21"></a><span class="co">#&gt;   commit.message</span></span>
+<span id="cb6-22"><a href="#cb6-22"></a><span class="co">#&gt; 1 Initial commit</span></span>
+<span id="cb6-23"><a href="#cb6-23"></a><span class="co">#&gt;                                                                                            commit.tree.url</span></span>
+<span id="cb6-24"><a href="#cb6-24"></a><span class="co">#&gt; 1 https://prueba.com/api/v1/repos/empresa/repo_prueba/git/trees/77226be181cd8f00ba34rsfsgs26445e2df128fcf1</span></span>
+<span id="cb6-25"><a href="#cb6-25"></a><span class="co">#&gt;                              commit.tree.sha author.id author.login</span></span>
+<span id="cb6-26"><a href="#cb6-26"></a><span class="co">#&gt; 1 77226be181cd8f00ba34rsfsgs26445e2df128fcf1        25         juan</span></span>
+<span id="cb6-27"><a href="#cb6-27"></a><span class="co">#&gt;   author.full_name    author.email                      author.avatar_url</span></span>
+<span id="cb6-28"><a href="#cb6-28"></a><span class="co">#&gt; 1                  juan@correo.com https://prueba.com/user/avatar/juan/-1</span></span>
+<span id="cb6-29"><a href="#cb6-29"></a><span class="co">#&gt;   author.language author.is_admin    author.last_login       author.created</span></span>
+<span id="cb6-30"><a href="#cb6-30"></a><span class="co">#&gt; 1           es-ES            TRUE 2020-07-23T20:12:11Z 2020-03-09T23:46:56Z</span></span>
+<span id="cb6-31"><a href="#cb6-31"></a><span class="co">#&gt;   author.username committer.id committer.login committer.full_name</span></span>
+<span id="cb6-32"><a href="#cb6-32"></a><span class="co">#&gt; 1            juan           25            juan                    </span></span>
+<span id="cb6-33"><a href="#cb6-33"></a><span class="co">#&gt;   committer.email                   committer.avatar_url committer.language</span></span>
+<span id="cb6-34"><a href="#cb6-34"></a><span class="co">#&gt; 1 juan@correo.com https://prueba.com/user/avatar/juan/-1              es-ES</span></span>
+<span id="cb6-35"><a href="#cb6-35"></a><span class="co">#&gt;   committer.is_admin committer.last_login    committer.created</span></span>
+<span id="cb6-36"><a href="#cb6-36"></a><span class="co">#&gt; 1               TRUE 2020-07-23T20:12:11Z 2020-03-09T23:46:56Z</span></span>
+<span id="cb6-37"><a href="#cb6-37"></a><span class="co">#&gt;   committer.username parents</span></span>
+<span id="cb6-38"><a href="#cb6-38"></a><span class="co">#&gt; 1               juan    NULL</span></span></code></pre></div>
+<p>These are just some of the functionality of gitea, there are other information that we can obtain about a gitea service.</p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
